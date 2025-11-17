@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sensor Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <style>
+        /* --- Reset & Global --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        body { background-color: #f4f7f6; }
+
+        /* --- Layout --- */
+        .dashboard-container { display: flex; width: 100%; min-height: 100vh; }
+
+        /* --- Sidebar --- */
+        .sidebar {
+            width: 240px;
+            background-color: #1a253c;
+            color: #aeb9d8;
+            padding: 25px 20px;
+            flex-shrink: 0;
+        }
+        .sidebar-header {
+            font-size: 24px;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        .sidebar-menu ul { list-style: none; }
+        .sidebar-menu li {
+            padding: 15px 10px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+        .sidebar-menu li.active { 
+            background-color: #2c3e63;
+            color: #ffffff;
+            font-weight: 500;
+        }
+        .sidebar-menu li i { margin-right: 12px; width: 20px; }
+
+        /* --- Content --- */
+        .main-content { flex-grow: 1; padding: 30px; }
+        .main-header {
+            font-size: 28px;
+            font-weight: 300;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        /* --- Status Cards --- */
+        .status-cards-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.05);
+        }
+        .card-label { font-size: 16px; color: #888; margin-bottom: 15px; }
+        .card-value-large { font-size: 48px; font-weight: 600; }
+        #distance-value { color: #0d6efd; }
+        #distance-unit { font-size: 24px; color: #0d6efd; margin-left: 5px; }
+        #ldr-status { color: #facc15; }
+        #ldr-status.light-off { color: #555; }
+
+        /* --- Chart Container --- */
+        .chart-container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.05);
+        }
+
+        /* --- (ปรับปรุง) Modern Dropdown --- */
+        .chart-options {
+            /* ย้ายตัวเลือกไปมุมขวาบนของกราฟ */
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .chart-options label {
+            font-size: 16px;
+            color: #555;
+            font-weight: 500;
+            margin-right: 10px;
+        }
+        .select-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        #sensor-select {
+            font-size: 16px;
+            font-weight: 500;
+            padding: 8px 35px 8px 15px; /* เว้นที่ให้ลูกศร */
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            color: #333;
+            cursor: pointer;
+            
+            /* ลบลูกศรเริ่มต้น */
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+
+            /* (ใหม่) ใส่ลูกศร SVG (โมเดิร์น) */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23555' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 16px;
+        }
+        #sensor-select:focus {
+            outline: none;
+            border-color: #0d6efd; /* สีฟ้าตอนเลือก */
+            box-shadow: 0 0 0 2px rgba(13,110,253,0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                Smart Parking Dashboard
+            </div>
+            <nav class="sidebar-menu">
+                <ul>
+                    <li class="active">
+                        <i class="fa-solid fa-chart-line"></i> Dashboard
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="main-header">
+                Dashboard Overview
+            </header>
+
+            <section class="status-cards-container">
+                <div class="card">
+                    <div class="card-label">💨 Gas Level (MQ-2)</div>
+                    <div id="mq2-gauge" style="min-height: 200px;"></div>
+                </div>
+                <div class="card">
+                    <div class="card-label">📏 Distance (VL53L0X)</div>
+                    <div class="card-value-large" style="padding-top: 40px;">
+                        <span id="distance-value">...</span>
+                        <span id="distance-unit">mm</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-label">💡 Light Status (LDR)</div>
+                    <div class="card-value-large" style="padding-top: 40px;">
+                        <span id="ldr-status" class="light-off">...</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="chart-container">
+                
+                <div class="chart-options">
+                    <label for="sensor-select">Displaying:</label>
+                    <div class="select-wrapper">
+                        <select id="sensor-select" name="sensor">
+                            <option value="mq2">📈 MQ-2 (Gas)</option>
+                            <option value="ldr">📈 LDR (Light)</option>
+                            <option value="dist">📈 Distance</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="summary-line-chart" style="min-height: 320px;"></div>
+            </section>
+        </main>
+    </div>
+
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // --- ค่าคงที่ (เหมือนเดิม) ---
+        const LDR_THRESHOLD = 500;
+        const MAX_DATA_POINTS = 30;
+        let dataMQ2 = [], dataLDR = [], dataDist = [];
+
+        // --- 1. ตั้งค่า Gauge (MQ-2) (เหมือนเดิม) ---
+        var mq2Options = {
+            chart: { type: 'radialBar', height: 250 },
+            series: [0],
+            plotOptions: { radialBar: { hollow: { size: '65%' }, dataLabels: { name: { show: false }, value: { fontSize: '32px', fontWeight: 600, offsetY: 10, formatter: (val) => `${val}%` }, } } },
+            labels: ['Gas'],
+            fill: { type: 'gradient', gradient: { shade: 'dark', type: 'horizontal', shadeIntensity: 0.5, gradientToColors: ['#f87171', '#ef4444', '#b91c1c'], inverseColors: false, opacityFrom: 1, opacityTo: 1, stops: [0, 50, 100] } },
+        };
+        var mq2Chart = new ApexCharts(document.querySelector("#mq2-gauge"), mq2Options);
+        mq2Chart.render();
+
+        // --- 2. ตั้งค่า Line Chart (Area Chart) (เหมือนเดิม) ---
+        var lineChartOptions = {
+            series: [{ name: 'Sensor Value', data: [] }],
+            chart: { height: 320, type: 'area', animations: { enabled: true, easing: 'linear', dynamicAnimation: { speed: 1000 } }, toolbar: { show: false }, zoom: { enabled: false } },
+            markers: { size: 5, strokeWidth: 2, hover: { size: 7 } },
+            dataLabels: { enabled: false },
+            stroke: { curve: 'smooth', width: 3 },
+            xaxis: { type: 'datetime' },
+            yaxis: { title: { text: 'Value' }, min: 0 },
+            tooltip: { x: { format: 'HH:mm:ss' }, theme: 'dark' },
+            fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.7, opacityTo: 0.1, stops: [0, 90, 100] } }
+        };
+        var summaryLineChart = new ApexCharts(document.querySelector("#summary-line-chart"), lineChartOptions);
+        summaryLineChart.render();
+
+        // --- 3. เชื่อมต่อ WebSocket (เหมือนเดิม) ---
+        const socket = io();
+
+        // --- 4. รับข้อมูลจาก Server (เหมือนเดิม) ---
+        socket.on('sensorData', (data) => {
+            let timestamp = new Date().getTime();
+
+            // 4.1 อัปเดตสถานะ (เหมือนเดิม)
+            let mq2Percent = Math.round((data.mq2 / 1023) * 100);
+            mq2Chart.updateSeries([mq2Percent]);
+            document.getElementById('distance-value').innerText = data.dist;
+            const ldrElement = document.getElementById('ldr-status');
+            if (data.ldr < LDR_THRESHOLD) {
+                ldrElement.innerText = "LIGHT ON";
+                ldrElement.className = 'light-on';
+            } else {
+                ldrElement.innerText = "LIGHT OFF";
+                ldrElement.className = 'light-off';
+            }
+
+            // 4.2 อัปเดต Array (เหมือนเดิม)
+            dataMQ2.push([timestamp, data.mq2]);
+            dataLDR.push([timestamp, data.ldr]);
+            dataDist.push([timestamp, data.dist]);
+            if (dataMQ2.length > MAX_DATA_POINTS) {
+                dataMQ2.shift(); dataLDR.shift(); dataDist.shift();
+            }
+            
+            // 4.3 อัปเดตกราฟ (เหมือนเดิม)
+            updateSelectedChartSeries();
+        });
+
+        // --- (ปรับปรุง) 5. Function อัปเดตกราฟสรุป ---
+        function updateSelectedChartSeries() {
+            // (ใหม่) อ่านค่าจาก Dropdown
+            const selectedSensor = document.getElementById('sensor-select').value;
+            
+            let selectedData, yAxisTitle, yMax, color;
+
+            if (selectedSensor === 'ldr') {
+                selectedData = dataLDR;
+                yAxisTitle = 'LDR Value (0-1023)';
+                yMax = 1023;
+                color = '#facc15'; // Yellow
+            } else if (selectedSensor === 'dist') {
+                selectedData = dataDist;
+                yAxisTitle = 'Distance (mm)';
+                yMax = 2000;
+                color = '#0d6efd'; // Blue
+            } else { // 'mq2'
+                selectedData = dataMQ2;
+                yAxisTitle = 'MQ-2 Value (0-1023)';
+                yMax = 1023;
+                color = '#ef4444'; // Red
+            }
+
+            // (ส่วนที่เหลือเหมือนเดิม)
+            summaryLineChart.updateSeries([{ data: selectedData }]);
+            summaryLineChart.updateOptions({
+                yaxis: { title: { text: yAxisTitle }, min: 0, max: yMax },
+                stroke: { colors: [color] },
+                series: [{ name: yAxisTitle }],
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shade: 'dark', type: 'vertical', shadeIntensity: 0.5,
+                        gradientToColors: [color], inverseColors: false,
+                        opacityFrom: 0.7, opacityTo: 0.1, stops: [0, 100]
+                    }
+                },
+                markers: { strokeColors: color }
+            });
+        }
+
+        // --- (ปรับปรุง) 6. Event Listener ---
+        // (ใหม่) เปลี่ยนให้ดักจับ Event 'change' ที่ Dropdown
+        document.getElementById('sensor-select').addEventListener('change', updateSelectedChartSeries);
+
+        // (เหมือนเดิม) เรียกครั้งแรกตอนโหลด
+        document.addEventListener('DOMContentLoaded', (event) => {
+            updateSelectedChartSeries();
+        });
+    </script>
+</body>
+</html>
