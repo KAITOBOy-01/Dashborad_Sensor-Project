@@ -307,6 +307,22 @@
         document.addEventListener('DOMContentLoaded', (event) => {
             updateSelectedChartSeries();
         });
+
+        // ฟังก์ชันดึงข้อมูลจาก Python
+    function updateDashboard() {
+        fetch('/api/data')  // ยิงไปขอข้อมูลจาก localhost
+            .then(response => response.json())
+            .then(data => {
+                // เอาค่าที่ได้มาใส่ในหน้าเว็บ
+                document.getElementById('show-gas').innerText = "Gas: " + data.gas;
+                document.getElementById('show-dist').innerText = "Dist: " + data.distance;
+                document.getElementById('show-light').innerText = "Light: " + data.light;
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    // สั่งให้ทำทุกๆ 1 วินาที (1000 ms)
+    setInterval(updateDashboard, 1000);
     </script>
 </body>
 </html>
